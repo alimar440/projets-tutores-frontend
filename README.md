@@ -1,34 +1,66 @@
-# Gestion des projets tutorés — Master 2 GDIL
+﻿# Gestion des projets tutorés — Master 2 GDIL
 
-Frontend Angular 19.2, en français, avec formulaires réactifs, HttpClient et routes par rôle.
+Frontend Angular 19.2 connecté au backend Spring Boot de [mbackeCISSE/backend](https://github.com/mbackeCISSE/backend).
+Les appels réels sont activés par défaut : connexion, gestion des utilisateurs, sujets, candidatures et décisions.
 
 ## Installer et lancer
 
-Prérequis : Node.js compatible Angular 19 (par exemple Node 22) et npm.
+Prérequis : Node.js compatible Angular 19 (par exemple Node 22), Java 21 ou supérieur, et MySQL 8.0.16 ou supérieur.
+Docker Desktop peut fournir MySQL sans installation manuelle.
 
-```sh
-npm install
-npm start
-```
+Les deux dépôts se trouvent côte à côte :
 
-Sous PowerShell, utiliser `npm.cmd` si la politique bloque `npm.ps1`.
-Ouvrir http://localhost:4200. Le mode mock est activé par défaut : aucun backend n’est nécessaire.
+    projet_dev_multitier/
+      backend/
+      frontend/
 
-## Données de démonstration et passage au backend
+Si le backend n’est pas encore présent, depuis le dossier parent :
 
-Les profils, sujets et candidatures sont définis dans `src/app/services/mock-data.ts`. Les actions de création, modification, suppression et décision fonctionnent en mémoire. Les changements sont conservés lors du changement de profil et réinitialisés au rafraîchissement. Aucun stockage local n’est utilisé.
+    git clone https://github.com/mbackeCISSE/backend.git backend
 
-Pour brancher les API métier Spring Boot, remplacer `useValue: true` par `useValue: false` pour `MOCK_ENABLED` dans `src/app/app.config.ts`, puis démarrer le backend sur http://localhost:8080.
+### 1. Démarrer MySQL
 
-La page de connexion utilise actuellement une vérification mock dans `services/auth.service.ts`. Le contrat fourni ne définit aucune route de connexion : il faudra convenir de cette route et du mécanisme de session avec le développeur backend, puis raccorder ce service. En mode backend, une erreur explicite empêche de présenter la connexion mock comme une authentification réelle. Aucune route backend n’a été inventée ou modifiée.
+Depuis frontend, avec Docker Desktop démarré :
 
-Le backend doit autoriser par CORS l’origine http://localhost:4200, les méthodes GET, POST, PUT, PATCH, DELETE et l’en-tête `X-Utilisateur-Id`, avec les prévols OPTIONS. Le contrat fourni reste inchangé ; les règles du mock restent à comparer aux règles métier définitives du backend.
+    docker compose -f compose.mysql.yaml up -d
+    docker compose -f compose.mysql.yaml ps
 
-## Utilisation
+Le service doit devenir healthy. MySQL écoute sur 127.0.0.1:3307 et conserve les données dans un volume Docker.
+Les identifiants ci-dessous sont réservés à cette base locale de démonstration.
 
-Saisir l’email et le mot de passe d’un compte ci-dessous. La session reste uniquement en mémoire ; un rafraîchissement ou « Se déconnecter » l’efface. Les gardes adaptent les accès du frontend ; le backend devra aussi contrôler les autorisations.
+### 2. Démarrer Spring Boot
 
-Comptes fictifs, avec le mot de passe commun `Projet2026!` :
+Dans un terminal PowerShell, depuis backend :
+
+    $env:DB_URL = 'jdbc:mysql://localhost:3307/projets_tutores?createDatabaseIfNotExist=true&serverTimezone=UTC&allowPublicKeyRetrieval=true&useSSL=false'
+    $env:DB_USERNAME = 'root'
+    $env:DB_PASSWORD = 'ProjetsLocal2026!'
+    .\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=demo"
+
+Vérifier que JAVA_HOME désigne un JDK 21 ou supérieur. Sur le poste utilisé pour l’intégration, il pointait initialement vers Java 17 ; le JDK disponible a été sélectionné pour le terminal de lancement :
+
+    $env:JAVA_HOME = 'C:\Program Files\Java\jdk-26.0.1'
+
+Adapter ce chemin à votre installation. Ces variables ne modifient que le terminal courant.
+Si vous avez déjà MySQL, utilisez votre DB_URL, DB_USERNAME et DB_PASSWORD au lieu du service Docker.
+
+L’API est disponible sur http://localhost:8080/api.
+Le profil demo initialise les comptes et leurs mots de passe BCrypt sans écraser les empreintes existantes.
+
+### 3. Démarrer Angular
+
+Dans un autre terminal, depuis frontend :
+
+    npm install
+    npm start
+
+Sous PowerShell, utiliser npm.cmd si npm.ps1 est bloqué.
+Ouvrir exactement http://localhost:4200 : cette origine est autorisée par le backend.
+Aucun proxy ni cookie de connexion n’est nécessaire.
+
+## Comptes de démonstration
+
+Mot de passe commun : Projet2026!
 
 | Rôle | Nom | Email |
 | --- | --- | --- |
@@ -40,28 +72,54 @@ Comptes fictifs, avec le mot de passe commun `Projet2026!` :
 | Étudiante | Mariama Ba | mariama.ba@gdil.example |
 | Responsable | Cheikh Seck | cheikh.seck@gdil.example |
 
-Les sujets évoquent les stages à Dakar, les salles à Saint-Louis et le suivi énergétique d’un campus de Thiès. Les personnes, comptes et projets sont fictifs. Le mot de passe mock est public et destiné uniquement aux essais locaux.
+Les comptes réellement présents proviennent de MySQL. Les identifiants ne sont pas codés en dur côté Angular.
+En profil demo, un étudiant ou enseignant créé par l’admin reçoit aussi le mot de passe initial Projet2026!.
 
-- ADMIN : gérer les étudiants et enseignants, consulter les sujets.
-- ENSEIGNANT : gérer ses sujets, consulter leurs candidatures.
-- ETUDIANT : consulter les sujets disponibles, candidater et suivre les résultats.
-- RESPONSABLE : décider des candidatures en attente et consulter les affectations.
+## Connexion et données
 
-Les pages utilisent toujours le même service HTTP. En mode démonstration, un intercepteur transmet les requêtes au service mock. En mode réel, elles sont envoyées à l’API REST. L’adresse API est définie dans `src/app/services/api.service.ts`. Les affectations filtrent les candidatures acceptées.
+AuthService appelle POST /api/auth/connexion avec {email, motDePasse}. Le backend renvoie {id, nom, prenom, email, role}.
+Angular conserve cet utilisateur uniquement en mémoire et ajoute X-Utilisateur-Id aux requêtes métier.
+La connexion ne dépend pas de GET /utilisateurs-demo.
 
-## Vérifier
+Se déconnecter ou rafraîchir la page efface la session Angular ; les données métier restent dans MySQL.
+Il s’agit toujours de la simulation locale prévue par le backend : aucun JWT ni session serveur, et l’en-tête peut être falsifié.
 
-```sh
-npm run build
-npm test -- --watch=false --browsers=ChromeHeadless
-```
+- ADMIN : étudiants, enseignants et consultation des sujets.
+- ENSEIGNANT : gestion de ses sujets et consultation de leurs candidatures.
+- ETUDIANT : sujets disponibles, candidature et suivi des résultats.
+- RESPONSABLE : décisions et affectations obtenues en filtrant les candidatures acceptées.
 
-Les tests HTTP utilisent les outils de test Angular et ne remplacent pas une validation avec Spring Boot. Voir [les vérifications et le parcours d’intégration](docs/verification.md), [le contrat API](docs/contrat-api.md) et [les captures pour le rapport](docs/captures-rapport.md).
+L’adresse du backend est définie dans src/app/services/api.service.ts.
+Les erreurs HTTP du backend sont affichées ; une indisponibilité ne déclenche aucun repli automatique sur les mocks.
+
+## Mode mock facultatif
+
+Les mocks restent disponibles pour travailler hors ligne. Dans src/app/app.config.ts, passer MOCK_ENABLED à true.
+Laisser false pour utiliser Spring Boot. La connexion utilise la même route dans les deux modes.
+
+Les données fictives de src/app/services/mock-data.ts et les modifications du mode mock restent uniquement en mémoire.
+Elles ne sont jamais synchronisées avec MySQL et disparaissent au rafraîchissement.
+
+## Vérifications et arrêt
+
+    npm run build
+    npm test -- --watch=false --browsers=ChromeHeadless
+
+Dans backend :
+
+    .\mvnw.cmd package
+
+Voir [les vérifications réellement effectuées](docs/verification.md), [le contrat du backend](docs/contrat-api.md) et [les captures du rapport](docs/captures-rapport.md).
+
+Pour arrêter Angular ou Spring Boot, utiliser Ctrl+C dans leurs terminaux.
+Pour arrêter MySQL sans supprimer les données :
+
+    docker compose -f compose.mysql.yaml stop
 
 ## Organisation
 
-- `models` : interfaces et libellés français.
-- `services` : API, intercepteur et session en mémoire.
-- `guards` : contrôle des routes par rôle.
-- `pages` : connexion, gestion des personnes, sujets et candidatures.
-- `components` : en-tête, menu latéral, carte de sujet et icônes réutilisables.
+- models : interfaces et libellés français.
+- services : API HTTP, connexion, session et mocks facultatifs.
+- guards : accès aux routes selon le rôle.
+- pages : connexion, utilisateurs, sujets et candidatures.
+- components : en-tête, menu, cartes de sujets et icônes.

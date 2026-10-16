@@ -1,42 +1,76 @@
-# Vérifications — 15 octobre 2026
+﻿# Vérifications — intégration du 16 octobre 2026
 
-## Effectuées
+## Sources et configuration
 
-- Version Angular 19.2 conservée, sans nouvelle dépendance.
-- `npm.cmd run build` : compilation de production réussie, sans dépassement des budgets.
-- `npm.cmd test -- --watch=false --browsers=ChromeHeadless` : 20 tests réussis sous Chrome Headless.
-- Connexion mock : compte valide, normalisation de l’email, refus d’un mauvais mot de passe ou d’un compte inconnu, absence de session après échec ; signalement explicite de l’authentification backend à raccorder.
-- Tests : affichage initial, en-tête utilisateur et exclusion des requêtes externes, corps POST de candidature, PATCH de décision, restitution du message métier, capacité entière positive, motivation non vide, candidature rejetée reconnue, gardes de rôle, rechargement des candidatures et places après décision.
-- Mode mock : parcours HTTP de création de sujet, candidature, acceptation et suivi entre profils ; vérification des places et des restrictions par rôle ; ajout, modification et suppression d’un étudiant ; refus d’une deuxième candidature même après rejet.
-- Parcours complet dans Chrome avec les comptes sénégalais : connexion de Moussa Diop, création d’un sujet, déconnexion et connexion d’Aminata Diallo, candidature, connexion de Cheikh Seck, acceptation, reconnexion de l’étudiante et consultation du résultat.
-- Réinitialisation des données et de la session après rafraîchissement vérifiée dans Chrome.
-- Captures examinées sur ordinateur (1440 px) et téléphone (390 px) ; absence de débordement horizontal de la page vérifiée sur la connexion et les candidatures. Les tableaux défilent dans leur conteneur. Pictogramme de marque, badge de démonstration et avatars à initiales retirés.
-- Présentation finale : menu bleu nuit, fond gris perle, cartes claires, boutons bleus et typographie harmonisée. Photo de fond et bordure latérale du lien actif supprimées. Cartes de sujets simplifiées, descriptions de page ajoutées et formulaire de connexion centré. Captures ordinateur et téléphone examinées ; compilation et parcours navigateur réussis après cette refonte.
-- Recherche dans le code applicatif : aucun `any`, `localStorage` ou `sessionStorage`.
-- Deux tentatives de `GET http://localhost:8080/api/utilisateurs-demo`, dont une hors restrictions réseau : connexion impossible.
+Backend cloné depuis https://github.com/mbackeCISSE/backend au commit fdc826af1ef732fb54ab0c5f18ceacca6f40aa30, dans le dossier voisin ../backend.
+Le code source du backend n’a pas été modifié.
 
-La compilation a nécessité l’accès en lecture aux dossiers parents pour la résolution des dépendances. Les tests ont nécessité le lancement de Chrome Headless.
+Le dépôt utilise Spring Boot 4.1.1, Java 21 et MySQL, contrairement au choix PostgreSQL de la demande initiale.
+Les choix du dépôt ont été conservés. MySQL 8.4 a été lancé dans Docker sur 127.0.0.1:3307, avec une base dédiée projets_tutores et un volume persistant.
 
-## Limites
+Le frontend utilise désormais l’API réelle par défaut :
+- POST /api/auth/connexion, sans en-tête utilisateur ;
+- utilisateur renvoyé conservé en mémoire ;
+- X-Utilisateur-Id sur les requêtes métier ;
+- aucune dépendance à GET /utilisateurs-demo pour la connexion ;
+- aucun repli automatique sur les données mock.
 
-Le backend étant inaccessible, aucun parcours avec Spring Boot n’a été exécuté et aucune donnée n’a été créée sur le serveur. À la demande de l’utilisateur, un mode mock est maintenant activé par défaut : données et modifications restent uniquement en mémoire. Les règles de démonstration devront être comparées aux règles définitives du backend, notamment les conflits et suppressions.
+Le contrat dans docs/contrat-api.md est une copie du contrat du backend cloné, incluant sa route de connexion.
 
-L’architecture distingue `pages` (écrans et formulaires), `components` (en-tête, menu, cartes, icônes) et `services` (HTTP, session, données mock). Les templates sont dans des fichiers HTML. Le contrat API est conservé pour le futur branchement.
+## Compilation et tests automatisés
 
-La connexion email/mot de passe a été ajoutée à la demande de l’utilisateur. Elle est simulée côté frontend pour le moment. Le contrat initial ne prévoit aucune route d’authentification ; cette extension devra être définie avec le backend et raccordée dans `AuthService`. En mode API réelle, la connexion reste bloquée avec un message explicite tant que ce raccordement n’est pas réalisé.
+- Frontend : npm.cmd run build réussi ; bundle initial de 364,36 ko.
+- Angular : 21 tests réussis sous Chrome Headless.
+- Les nouveaux tests vérifient le corps POST de connexion, l’email normalisé, le mot de passe transmis sans modification, l’absence d’en-tête sur la connexion, l’identifiant renvoyé par le backend et l’absence de session après un refus 401.
+- Les tests existants couvrent les rôles, les corps HTTP métier, la capacité entière, les candidatures déjà rejetées et le rechargement des places après décision.
+- Backend : mvnw.cmd package réussi avec le JDK 26.0.1 disponible sur le poste, en conservant la cible Java 21.
+- Backend : 15 tests H2 exécutés avec succès ; les 15 tests MySQL optionnels de Maven n’ont pas été activés et sont signalés comme ignorés.
+- La première compilation Maven utilisait JAVA_HOME pointant vers Java 17 et a échoué ; le choix du JDK a été corrigé uniquement pour le processus de compilation.
+- git diff --check réussi.
 
-## Parcours à réaliser avec Spring Boot
+## Parcours réel dans Chrome
 
-1. Définir et raccorder l’authentification backend, démarrer le backend et le frontend, puis vérifier la connexion.
-2. Se connecter en enseignant, créer un sujet ouvert de capacité 1 et vérifier sa présence dans ses sujets.
-3. Changer pour un étudiant, ouvrir ce sujet, saisir une motivation et envoyer la candidature.
-4. Vérifier « Déjà candidaté » et le statut En attente dans les candidatures de l’étudiant.
-5. Changer pour l’enseignant et vérifier la candidature et sa motivation.
-6. Changer pour le responsable, accepter la candidature et vérifier le statut Acceptée et les places restantes à 0.
-7. Vérifier que cette candidature apparaît dans Affectations et que les boutons de décision ont disparu.
-8. Revenir à l’étudiant et vérifier le résultat dans Mes candidatures.
-9. Sur un autre sujet ouvert, vérifier le rejet puis « Déjà candidaté » pour cet étudiant même après rejet.
-10. En ADMIN, vérifier ajout, modification et suppression des étudiants et enseignants ; tester une suppression annulée et un conflit métier éventuel.
-11. Vérifier les listes vides, erreurs backend, saisies invalides et l’affichage sur une largeur de téléphone.
+Origine Angular : http://localhost:4200, autorisée par le CORS du backend.
+API : http://localhost:8080/api, profil demo, connectée à MySQL Docker.
 
-Le backend et le contrat d’API n’ont pas été modifiés.
+1. Connexion de Moussa Diop, enseignant.
+2. Création d’un sujet ouvert avec une place.
+3. Déconnexion puis connexion d’Aminata Diallo, étudiante.
+4. Candidature au sujet avec une motivation.
+5. Déconnexion puis connexion de Cheikh Seck, responsable.
+6. Acceptation de la candidature et rechargement des informations.
+7. Reconnexion d’Aminata et lecture du statut Acceptée.
+8. Rafraîchissement : retour à la connexion, puis reconnexion de l’enseignant et vérification que le sujet est toujours présent en MySQL.
+
+Ce parcours a réussi avec les mocks désactivés. Les captures ordinateur (1440 px) et téléphone (390 px) ont été produites.
+Le scénario conserve un sujet d’intégration et sa candidature acceptée dans la base locale dédiée.
+
+## Contrôles HTTP supplémentaires sur le backend réel
+
+- Connexion des quatre rôles avec leurs comptes de démonstration.
+- Mauvais mot de passe : 401.
+- Ajout, modification, lecture et suppression d’un étudiant et d’un enseignant sans liens métier.
+- Connexion des nouveaux comptes avec le mot de passe initial du profil demo.
+- Création, modification et suppression d’un sujet sans candidature.
+- Modification du sujet d’un autre enseignant : 403.
+- Consultation des candidatures par ADMIN : 403.
+- Nouvelle candidature au même sujet : 409.
+- Nouvelle décision sur une candidature déjà traitée : 409.
+- Vérification des places restantes à 0 après acceptation.
+- Prévol CORS pour la connexion depuis localhost:4200 autorisé.
+
+Les utilisateurs et le sujet temporaires des contrôles CRUD ont été supprimés par les routes API prévues.
+
+## Limites conservées
+
+La connexion du backend reste la simulation locale prévue par son auteur : BCrypt à la connexion, mais ni JWT ni session serveur.
+Les autorisations métier utilisent X-Utilisateur-Id, qui peut être falsifié. Aucune authentification de production n’a été ajoutée.
+
+La session frontend reste en mémoire ; les données réelles restent dans MySQL. Le mode mock facultatif est indépendant de MySQL et doit être activé explicitement.
+Les tests n’ont pas été exécutés contre une installation MySQL personnelle ou un serveur déployé.
+
+## Lancement et arrêt
+
+Les instructions complètes figurent dans ../README.md.
+MySQL et le backend ont été démarrés localement pour les vérifications ; un frontend était déjà accessible sur localhost:4200.
+Arrêter MySQL sans supprimer les données : docker compose -f compose.mysql.yaml stop.

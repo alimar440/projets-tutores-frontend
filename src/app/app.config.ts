@@ -7,6 +7,6 @@ import { MOCK_ENABLED } from './services/app-settings';
 import { mockApiInterceptor } from './services/mock-api.service';
 export const appConfig: ApplicationConfig = {
   providers: [provideZoneChangeDetection({ eventCoalescing: true }), provideRouter(routes),
-    { provide: MOCK_ENABLED, useValue: true },
+    { provide: MOCK_ENABLED, useValue: false },
     provideHttpClient(withInterceptors([utilisateurInterceptor, mockApiInterceptor]))]
 };

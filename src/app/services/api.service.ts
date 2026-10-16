@@ -5,7 +5,7 @@ import { SessionService } from './session.service';
 export const API_URL = 'http://localhost:8080/api';
 export const utilisateurInterceptor: HttpInterceptorFn = (request, next) => {
   const utilisateur = inject(SessionService).utilisateur();
-  if (utilisateur && request.url.startsWith(API_URL + '/') && request.url !== API_URL + '/utilisateurs-demo') {
+  if (utilisateur && request.url.startsWith(API_URL + '/') && request.url !== API_URL + '/utilisateurs-demo' && request.url !== API_URL + '/auth/connexion') {
     request = request.clone({ setHeaders: { 'X-Utilisateur-Id': String(utilisateur.id) } });
   }
   return next(request);
@@ -22,6 +22,7 @@ export function messageErreur(error: unknown): string {
 @Injectable({ providedIn: 'root' })
 export class ApiService {
   private readonly http = inject(HttpClient);
+  connexion(email: string, motDePasse: string) { return this.http.post<Utilisateur>(API_URL + '/auth/connexion', { email, motDePasse }); }
   utilisateurs() { return this.http.get<Utilisateur[]>(API_URL + '/utilisateurs-demo'); }
   personnes(type: 'etudiants' | 'enseignants') { return this.http.get<Utilisateur[]>(API_URL + '/' + type); }
   enregistrerPersonne(type: 'etudiants' | 'enseignants', data: PersonneForm, id: number | null) {

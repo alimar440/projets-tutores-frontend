@@ -4,7 +4,7 @@ import { defer, delay, of } from 'rxjs';
 import { Candidature, PersonneForm, Role, Statut, Sujet, SujetForm, Utilisateur } from '../models/models';
 import { API_URL } from './api.service';
 import { MOCK_ENABLED } from './app-settings';
-import { candidaturesDemo, MockSujet, sujetsDemo, utilisateursDemo } from './mock-data';
+import { candidaturesDemo, MockSujet, MOT_DE_PASSE_MOCK, sujetsDemo, utilisateursDemo } from './mock-data';
 
 export const mockApiInterceptor: HttpInterceptorFn = (request, next) => {
   if (!inject(MOCK_ENABLED) || !request.url.startsWith(API_URL + '/')) return next(request);
@@ -23,6 +23,12 @@ export class MockApiService {
     const [ressource, identifiant, action] = request.url.slice(API_URL.length + 1).split('/');
     const id = Number(identifiant);
     const method = request.method;
+    if (ressource === 'auth' && identifiant === 'connexion' && method === 'POST') {
+      const data = request.body as { email: string; motDePasse: string };
+      const compte = this.utilisateurs.find(u => u.email.toLowerCase() === data.email.trim().toLowerCase());
+      if (!compte || data.motDePasse !== MOT_DE_PASSE_MOCK) return this.erreur(401, 'Adresse email ou mot de passe incorrect.');
+      return this.reponse(compte);
+    }
     if (ressource === 'utilisateurs-demo' && method === 'GET') return this.reponse(this.utilisateurs);
     const utilisateur = this.utilisateurs.find(u => u.id === Number(request.headers.get('X-Utilisateur-Id')));
     if (!utilisateur) return this.erreur(400, 'Veuillez sélectionner un utilisateur valide.');
